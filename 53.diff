@@ -1,0 +1,408 @@
+? arch/alpha/stand/installboot/installboot.8.manlint
+? arch/alpha/stand/setnetbootinfo/setnetbootinfo.8.manlint
+? arch/amd64/stand/biosboot/biosboot
+? arch/amd64/stand/biosboot/biosboot.8.manlint
+? arch/amd64/stand/cdbr/cdbr
+? arch/amd64/stand/etc/assym.h
+? arch/amd64/stand/installboot/installboot
+? arch/amd64/stand/installboot/installboot.8.manlint
+? arch/amd64/stand/mbr/mbr
+? dev/microcode/atmel/atu-at76c503-i3863-ext
+? dev/microcode/atmel/atu-at76c503-i3863-int
+? dev/microcode/atmel/atu-at76c503-rfmd-acc-ext
+? dev/microcode/atmel/atu-at76c503-rfmd-acc-int
+? dev/microcode/atmel/atu-at76c505-rfmd-ext
+? dev/microcode/atmel/atu-at76c505-rfmd-int
+? dev/microcode/atmel/atu-intersil-ext
+? dev/microcode/atmel/atu-intersil-int
+? dev/microcode/atmel/atu-rfmd-ext
+? dev/microcode/atmel/atu-rfmd-int
+? dev/microcode/atmel/atu-rfmd2958-ext
+? dev/microcode/atmel/atu-rfmd2958-int
+? dev/microcode/atmel/atu-rfmd2958smc-ext
+? dev/microcode/atmel/atu-rfmd2958smc-int
+? dev/microcode/atmel/build
+? dev/microcode/bnx/bnx-b06
+? dev/microcode/bnx/bnx-b09
+? dev/microcode/bnx/bnx-rv2p
+? dev/microcode/bnx/bnx-xi-rv2p
+? dev/microcode/bnx/bnx-xi90-rv2p
+? dev/microcode/bnx/build
+? dev/microcode/cirruslogic/build
+? dev/microcode/cirruslogic/cs4280
+? dev/microcode/fxp/build
+? dev/microcode/fxp/fxp-d101a
+? dev/microcode/fxp/fxp-d101b0
+? dev/microcode/fxp/fxp-d101ma
+? dev/microcode/fxp/fxp-d101s
+? dev/microcode/fxp/fxp-d102
+? dev/microcode/fxp/fxp-d102c
+? dev/microcode/fxp/fxp-d102e
+? dev/microcode/kue/build
+? dev/microcode/kue/kue
+? dev/microcode/myx/build
+? dev/microcode/myx/myx-eth_z8e
+? dev/microcode/myx/myx-ethp_z8e
+? dev/microcode/ral/build
+? dev/microcode/ral/ral-rt2561
+? dev/microcode/ral/ral-rt2561s
+? dev/microcode/ral/ral-rt2661
+? dev/microcode/ral/ral-rt2860
+? dev/microcode/rum/build
+? dev/microcode/rum/rum-rt2573
+? dev/microcode/rum/run-rt2870
+? dev/microcode/rum/run-rt3071
+? dev/microcode/tht/build
+? dev/microcode/tht/tht
+? dev/microcode/tigon/build
+? dev/microcode/tigon/tigon1
+? dev/microcode/tigon/tigon2
+? dev/microcode/tusb3410/build
+? dev/microcode/tusb3410/tusb3410
+? dev/microcode/typhoon/3c990
+? dev/microcode/typhoon/build
+? dev/microcode/udl/build
+? dev/microcode/udl/udl_huffman
+? dev/microcode/uyap/build
+? dev/microcode/uyap/uyap
+? dev/microcode/yds/build
+? dev/microcode/yds/yds
+? dev/microcode/zydas/build
+? dev/microcode/zydas/zd1211
+? dev/microcode/zydas/zd1211b
+? sys/smalloc.h
+Index: arch/amd64/amd64/vm_machdep.c
+===================================================================
+RCS file: /cvs/src/sys/arch/amd64/amd64/vm_machdep.c,v
+retrieving revision 1.26
+diff -u -r1.26 vm_machdep.c
+--- arch/amd64/amd64/vm_machdep.c	14 Apr 2012 14:26:41 -0000	1.26
++++ arch/amd64/amd64/vm_machdep.c	18 Jun 2013 00:41:03 -0000
+@@ -53,6 +53,8 @@
+ #include <sys/exec.h>
+ #include <sys/ptrace.h>
+ #include <sys/signalvar.h>
++#include <sys/types.h>
++#include <sys/pool.h>
+ 
+ #include <uvm/uvm_extern.h>
+ 
+Index: conf/files
+===================================================================
+RCS file: /cvs/src/sys/conf/files,v
+retrieving revision 1.537
+diff -u -r1.537 files
+--- conf/files	26 Apr 2012 01:22:31 -0000	1.537
++++ conf/files	18 Jun 2013 00:41:04 -0000
+@@ -680,6 +680,7 @@
+ file kern/subr_userconf.c		boot_config
+ file kern/subr_xxx.c
+ file kern/sys_generic.c
++file kern/sys_malloc.c
+ file kern/sys_pipe.c
+ file kern/sys_process.c			ptrace | procfs | systrace
+ file kern/sys_socket.c
+Index: kern/init_sysent.c
+===================================================================
+RCS file: /cvs/src/sys/kern/init_sysent.c,v
+retrieving revision 1.136
+diff -u -r1.136 init_sysent.c
+--- kern/init_sysent.c	21 Jun 2012 00:57:59 -0000	1.136
++++ kern/init_sysent.c	18 Jun 2013 00:41:04 -0000
+@@ -1,4 +1,4 @@
+-/*	$OpenBSD: init_sysent.c,v 1.136 2012/06/21 00:57:59 guenther Exp $	*/
++/*	$OpenBSD$	*/
+ 
+ /*
+  * System call switch table.
+@@ -788,5 +788,9 @@
+ 	    sys___set_tcb },			/* 329 = __set_tcb */
+ 	{ 0, 0, SY_NOLOCK | 0,
+ 	    sys___get_tcb },			/* 330 = __get_tcb */
++	{ 1, s(struct sys_free_args), 0,
++	    sys_free },				/* 331 = free */
++	{ 2, s(struct sys_realloc_args), 0,
++	    sys_realloc },			/* 332 = realloc */
+ };
+ 
+Index: kern/kern_exec.c
+===================================================================
+RCS file: /cvs/src/sys/kern/kern_exec.c,v
+retrieving revision 1.131
+diff -u -r1.131 kern_exec.c
+--- kern/kern_exec.c	1 May 2012 03:21:50 -0000	1.131
++++ kern/kern_exec.c	18 Jun 2013 00:41:04 -0000
+@@ -41,6 +41,7 @@
+ #include <sys/mount.h>
+ #include <sys/malloc.h>
+ #include <sys/pool.h>
++#include <sys/smalloc.h>
+ #include <sys/namei.h>
+ #include <sys/vnode.h>
+ #include <sys/file.h>
+@@ -76,6 +77,8 @@
+ #include <dev/systrace.h>
+ #endif
+ 
++RB_GENERATE_STATIC(regions, region_info, entry, region_cmp);
++
+ /*
+  * Map the shared signal code.
+  */
+@@ -608,10 +611,15 @@
+ 		splx(s);
+ 	}
+ 
++	/* XXX smalloc */
++	smalloc_init(p);
++
+ 	uvm_km_free_wakeup(exec_map, (vaddr_t) argp, NCARGS);
+ 
++
+ 	pool_put(&namei_pool, nid.ni_cnd.cn_pnbuf);
+ 	vn_close(pack.ep_vp, FREAD, cred, p);
++
+ 
+ 	/*
+ 	 * notify others that we exec'd
+Index: kern/kern_exit.c
+===================================================================
+RCS file: /cvs/src/sys/kern/kern_exit.c,v
+retrieving revision 1.117
+diff -u -r1.117 kern_exit.c
+--- kern/kern_exit.c	11 Jul 2012 08:45:21 -0000	1.117
++++ kern/kern_exit.c	18 Jun 2013 00:41:04 -0000
+@@ -59,6 +59,7 @@
+ #include <sys/sched.h>
+ #include <sys/ktrace.h>
+ #include <sys/pool.h>
++#include <sys/smalloc.h>
+ #include <sys/mutex.h>
+ #ifdef SYSVSEM
+ #include <sys/sem.h>
+@@ -74,6 +75,8 @@
+ 
+ #include <uvm/uvm_extern.h>
+ 
++RB_GENERATE_STATIC(regions, region_info, entry, region_cmp);
++
+ /*
+  * exit --
+  *	Death of process.
+@@ -129,6 +132,8 @@
+ 	atomic_setbits_int(&p->p_flag, P_WEXIT);
+ 
+ 	pr = p->p_p;
++	
++	smalloc_destroy(p);
+ 
+ 	/* single-threaded? */
+ 	if (TAILQ_FIRST(&pr->ps_threads) == p &&
+Index: kern/kern_fork.c
+===================================================================
+RCS file: /cvs/src/sys/kern/kern_fork.c,v
+retrieving revision 1.141
+diff -u -r1.141 kern_fork.c
+--- kern/kern_fork.c	21 Jun 2012 00:56:59 -0000	1.141
++++ kern/kern_fork.c	18 Jun 2013 00:41:04 -0000
+@@ -51,9 +51,11 @@
+ #include <sys/file.h>
+ #include <sys/acct.h>
+ #include <sys/ktrace.h>
++
+ #include <sys/sched.h>
+ #include <dev/rndvar.h>
+ #include <sys/pool.h>
++#include <sys/smalloc.h>
+ #include <sys/mman.h>
+ #include <sys/ptrace.h>
+ 
+@@ -81,6 +83,8 @@
+ 
+ void process_new(struct proc *, struct process *);
+ 
++RB_GENERATE_STATIC(regions, region_info, entry, region_cmp);
++
+ void
+ fork_return(void *arg)
+ {
+@@ -370,6 +374,14 @@
+ 	}
+ 	if (flags & FORK_NOZOMBIE)
+ 		atomic_setbits_int(&p->p_flag, P_NOZOMBIE);
++
++        /*  
++         * Copy the heap metadata
++         */
++        if (curp->p_p->dp) {
++                smalloc_init(p);
++                smalloc_remap(curp, p);
++        }   
+ 
+ #ifdef KTRACE
+ 	/*
+Index: kern/syscalls.c
+===================================================================
+RCS file: /cvs/src/sys/kern/syscalls.c,v
+retrieving revision 1.137
+diff -u -r1.137 syscalls.c
+--- kern/syscalls.c	21 Jun 2012 00:57:59 -0000	1.137
++++ kern/syscalls.c	18 Jun 2013 00:41:04 -0000
+@@ -1,4 +1,4 @@
+-/*	$OpenBSD: syscalls.c,v 1.137 2012/06/21 00:57:59 guenther Exp $	*/
++/*	$OpenBSD$	*/
+ 
+ /*
+  * System call names.
+@@ -406,4 +406,6 @@
+ 	"compat_o51___tfork",	/* 328 = compat_o51 __tfork */
+ 	"__set_tcb",			/* 329 = __set_tcb */
+ 	"__get_tcb",			/* 330 = __get_tcb */
++	"free",			/* 331 = free */
++	"realloc",			/* 332 = realloc */
+ };
+Index: kern/syscalls.master
+===================================================================
+RCS file: /cvs/src/sys/kern/syscalls.master,v
+retrieving revision 1.124
+diff -u -r1.124 syscalls.master
+--- kern/syscalls.master	21 Jun 2012 00:56:59 -0000	1.124
++++ kern/syscalls.master	18 Jun 2013 00:41:04 -0000
+@@ -571,3 +571,5 @@
+ 328	COMPAT_O51	{ int sys___tfork(struct __tfork51 *param); }
+ 329	STD NOLOCK	{ void sys___set_tcb(void *tcb); }
+ 330	STD NOLOCK	{ void *sys___get_tcb(void); }
++331	STD		{ void sys_free(void *p); }
++332	STD		{ void sys_realloc(void *p, size_t s); }
+Index: sys/proc.h
+===================================================================
+RCS file: /cvs/src/sys/sys/proc.h,v
+retrieving revision 1.161
+diff -u -r1.161 proc.h
+--- sys/proc.h	17 Jul 2012 21:59:56 -0000	1.161
++++ sys/proc.h	18 Jun 2013 00:41:04 -0000
+@@ -184,6 +184,8 @@
+ 	struct	rusage ps_cru;		/* sum of stats for reaped children */
+ 	struct	itimerval ps_timer[3];	/* timers, indexed by ITIMER_* */
+ 
++	struct dir_info *dp;		/* smalloc metadata */
++
+ /* End area that is zeroed on creation. */
+ #define	ps_endzero	ps_startcopy
+ 
+Index: sys/syscall.h
+===================================================================
+RCS file: /cvs/src/sys/sys/syscall.h,v
+retrieving revision 1.136
+diff -u -r1.136 syscall.h
+--- sys/syscall.h	21 Jun 2012 00:57:59 -0000	1.136
++++ sys/syscall.h	18 Jun 2013 00:41:04 -0000
+@@ -1,4 +1,4 @@
+-/*	$OpenBSD: syscall.h,v 1.136 2012/06/21 00:57:59 guenther Exp $	*/
++/*	$OpenBSD$	*/
+ 
+ /*
+  * System call numbers.
+@@ -675,4 +675,10 @@
+ /* syscall: "__get_tcb" ret: "void *" args: */
+ #define	SYS___get_tcb	330
+ 
+-#define	SYS_MAXSYSCALL	331
++/* syscall: "free" ret: "void" args: "void *" */
++#define	SYS_free	331
++
++/* syscall: "realloc" ret: "void" args: "void *" "size_t" */
++#define	SYS_realloc	332
++
++#define	SYS_MAXSYSCALL	333
+Index: sys/syscallargs.h
+===================================================================
+RCS file: /cvs/src/sys/sys/syscallargs.h,v
+retrieving revision 1.138
+diff -u -r1.138 syscallargs.h
+--- sys/syscallargs.h	21 Jun 2012 00:57:59 -0000	1.138
++++ sys/syscallargs.h	18 Jun 2013 00:41:04 -0000
+@@ -1,4 +1,4 @@
+-/*	$OpenBSD: syscallargs.h,v 1.138 2012/06/21 00:57:59 guenther Exp $	*/
++/*	$OpenBSD$	*/
+ 
+ /*
+  * System call argument lists.
+@@ -1033,6 +1033,15 @@
+ 	syscallarg(void *) tcb;
+ };
+ 
++struct sys_free_args {
++	syscallarg(void *) p;
++};
++
++struct sys_realloc_args {
++	syscallarg(void *) p;
++	syscallarg(size_t) s;
++};
++
+ /*
+  * System call prototypes.
+  */
+@@ -1284,3 +1293,5 @@
+ int	compat_o51_sys___tfork(struct proc *, void *, register_t *);
+ int	sys___set_tcb(struct proc *, void *, register_t *);
+ int	sys___get_tcb(struct proc *, void *, register_t *);
++int	sys_free(struct proc *, void *, register_t *);
++int	sys_realloc(struct proc *, void *, register_t *);
+Index: uvm/uvm_glue.c
+===================================================================
+RCS file: /cvs/src/sys/uvm/uvm_glue.c,v
+retrieving revision 1.59
+diff -u -r1.59 uvm_glue.c
+--- uvm/uvm_glue.c	23 Mar 2012 15:51:26 -0000	1.59
++++ uvm/uvm_glue.c	18 Jun 2013 00:41:04 -0000
+@@ -311,10 +311,12 @@
+  * - XXXCDC: we need a way for this to return a failure value rather
+  *   than just hang
+  */
++
+ void
+ uvm_fork(struct proc *p1, struct proc *p2, boolean_t shared, void *stack,
+     size_t stacksize, void (*func)(void *), void * arg)
+ {
++	
+ 	if (shared == TRUE) {
+ 		p2->p_vmspace = NULL;
+ 		uvmspace_share(p1, p2);			/* share vmspace */
+Index: uvm/uvm_mmap.c
+===================================================================
+RCS file: /cvs/src/sys/uvm/uvm_mmap.c,v
+retrieving revision 1.91
+diff -u -r1.91 uvm_mmap.c
+--- uvm/uvm_mmap.c	21 Jul 2012 06:46:58 -0000	1.91
++++ uvm/uvm_mmap.c	18 Jun 2013 00:41:04 -0000
+@@ -531,6 +531,7 @@
+ 	 * now let kernel internal function uvm_mmap do the work.
+ 	 */
+ 
++	// printf("omalloc: uvm_mmap(%p, %p, %lu, %d, %d, %d, %p, %lu, %lu, %p)\n", &p->p_vmspace->vm_map, addr, size, prot, maxprot, flags, handle, pos, p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur, p);
+ 	error = uvm_mmap(&p->p_vmspace->vm_map, &addr, size, prot, maxprot,
+ 	    flags, handle, pos, p->p_rlimit[RLIMIT_MEMLOCK].rlim_cur, p);
+ 
+@@ -998,8 +999,9 @@
+ 			return(EINVAL);
+ 
+ 		uvmflag |= UVM_FLAG_FIXED;
+-		if ((flags & __MAP_NOREPLACE) == 0)
++		if ((flags & __MAP_NOREPLACE) == 0) {
+ 			uvm_unmap(map, *addr, *addr + size);	/* zap! */
++		}
+ 	}
+ 
+ 	/*
+@@ -1137,8 +1139,8 @@
+ 			return (0);
+ 		}
+ 
+-		vm_map_unlock(map);
+ 
++		vm_map_unlock(map);
+ 		return (0);
+ 	}
+ 
